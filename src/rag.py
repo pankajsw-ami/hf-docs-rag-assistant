@@ -10,13 +10,17 @@ Design notes (see README for the full rationale):
 """
 
 from __future__ import annotations
-
+import os
+import pickle
+from pathlib import Path
 from dataclasses import dataclass
 from typing import List, Optional
 
 import faiss
 import numpy as np
 from datasets import load_dataset
+import fitz
+from docx import Document
 from sentence_transformers import SentenceTransformer
 
 
@@ -62,7 +66,38 @@ class RAGPipeline:
         self.index: Optional[faiss.Index] = None
 
     # ---- Ingestion & chunking ------------------------------------------------
+    def load_uploaded_file(self, file_path: str) -> List[Chunk]:
+        """Load a TXT, PDF, or DOCX file and split it into chunks."""
+        path = Path(file_path)
+        suffix = path.suffix.lower()
 
+        if suffix == ".txt":
+            text = path.read_text(encoding="utf-8")
+
+        elif suffix == ".pdf":
+            doc = fitz.open(file_path)
+            text = "\n".join(page.get_text() for page in doc)
+            doc.close()
+
+        elif suffix == ".docx":
+            doc = Document(file_path)
+            text = "\n".join(p.text for p in doc.paragraphs)
+
+        else:
+            raise ValueError(
+                "Unsupported file type. Use PDF, DOCX, or TXT."
+            )
+
+        chunks = [
+            Chunk(
+                text=chunk,
+                source=path.name,
+                doc_id=0,
+            )
+            for chunk in self._chunk(text)
+        ]
+
+        return chunks
     def load_and_chunk(self, max_docs: Optional[int] = None) -> List[Chunk]:
         """Load the corpus and split every document into overlapping chunks."""
         ds = load_dataset(self.corpus_name, split="train")
