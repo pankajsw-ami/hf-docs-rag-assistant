@@ -6,6 +6,8 @@ An end-to-end **Retrieval-Augmented Generation (RAG)** system that answers quest
 
 Ask a question → the system retrieves the most relevant documentation chunks from a FAISS vector index → a small LLM generates a grounded answer with numbered citations.
 
+The demo also supports uploading **PDF, DOCX, and TXT** files. When a document is uploaded, its text is extracted, chunked, embedded, indexed in FAISS, and used as the retrieval context for question answering.
+
 ```
                  ┌──────────────┐
    question ───▶ │  embed query  │
@@ -33,6 +35,7 @@ Ask a question → the system retrieves the most relevant documentation chunks f
 | Embeddings | [`sentence-transformers/all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) | 22M params, runs on CPU, strong quality/speed trade-off |
 | Vector DB | FAISS (`IndexFlatIP`) | In-memory, no server; inner product == cosine on L2-normalized vectors |
 | Generation | [`Qwen/Qwen2.5-0.5B-Instruct`](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct) | Small enough to run locally, real instruction-tuned model |
+| Document upload | PDF, DOCX, TXT | Extract text from user-provided documents and run RAG over the uploaded content |
 | Evaluation | recall@k, MRR, lexical grounding | Retrieval quality + a faithfulness smoke signal |
 | Fine-tuning | LoRA (PEFT) + TRL `SFTTrainer` | Shows training, not just API calls |
 
@@ -48,7 +51,7 @@ Ask a question → the system retrieves the most relevant documentation chunks f
 ```
 ├── README.md
 ├── requirements.txt
-├── app.py              # Gradio demo (run locally)
+├── app.py              # Gradio demo + PDF/DOCX/TXT upload support
 ├── finetune.py         # LoRA fine-tuning script (needs a GPU)
 └── src/
     ├── __init__.py
@@ -62,6 +65,18 @@ Ask a question → the system retrieves the most relevant documentation chunks f
 pip install -r requirements.txt
 python app.py            # launches the Gradio demo at http://localhost:7860
 ```
+
+### Document upload
+
+The Gradio demo accepts:
+
+- **PDF**
+- **DOCX**
+- **TXT**
+
+Upload a document, enter a question about its contents, and submit it. The application extracts the document text, splits it into chunks, creates normalized embeddings, builds a temporary FAISS index for the uploaded content, and generates an answer from the retrieved chunks with the source filename shown below the answer.
+
+If no document is uploaded, the demo uses the Hugging Face documentation corpus as before.
 
 Or use the pipeline directly:
 
@@ -93,6 +108,7 @@ print(answer)
 - Hybrid retrieval (BM25 + dense) with a cross-encoder reranker
 - RAGAS evaluation with an LLM judge
 - Streaming + chat history in the demo
+- Multi-document upload and persistent document indexes
 - Deploy as a hosted Space (requires a PRO subscription for Gradio on CPU)
 
 ## License
